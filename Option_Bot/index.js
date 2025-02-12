@@ -21,14 +21,13 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
 
 (async () => {
   const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: puppeteer.executablePath(), // Χρήση του ενσωματωμένου Chromium
+    headless: true, 
+    executablePath: '/usr/bin/google-chrome', 
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
-  
 
   const page = await browser.newPage();
-  console.log('✅ Το Puppeteer ξεκίνησε σωστά με το ενσωματωμένο Chromium!');
+  console.log('✅ Το Puppeteer ξεκίνησε σωστά με το Google Chrome!');
 
   await page.goto('https://pocketoption.com');
   console.log('📄 Η σελίδα Pocket Option φορτώθηκε επιτυχώς!');
@@ -60,19 +59,18 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
 function analyzeStrategy(candles) {
   const closePrices = candles.map(c => c.close);
   const latestPrice = closePrices[closePrices.length - 1];
-
   console.log(`📈 Τελευταία τιμή: ${latestPrice}`);
+
   if (latestPrice > 50) return 'CALL';
   else if (latestPrice < 50) return 'PUT';
   else return 'NO_SIGNAL';
 }
 
 // **Εκτέλεση Συναλλαγής**
-async function makeTrade(api, pair, signal, page) {
+async function makeTrade(pair, signal, page) {
   try {
     console.log(`📈 Προσπάθεια εκτέλεσης συναλλαγής: ${signal} στο ${pair}`);
-
-    let buttonSelector = signal === 'CALL' ? '.button-call-wrap a.btn-call' : '.button-put-wrap a.btn-put';
+    const buttonSelector = signal === 'CALL' ? '.button-call-wrap a.btn-call' : '.button-put-wrap a.btn-put';
     const button = await page.$(buttonSelector);
 
     if (button) {
