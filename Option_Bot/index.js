@@ -15,12 +15,13 @@ app.get('/', (req, res) => {
   `);
 });
 
+// Διαβάζουμε το port από τη μεταβλητή περιβάλλοντος ή χρησιμοποιούμε το 10000
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
 (async () => {
   const browser = await puppeteer.launch({
-    headless: true, // Εκτέλεση χωρίς GUI
+    headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
@@ -37,11 +38,6 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
         await page.goto('https://pocketoption.com', { waitUntil: 'networkidle2' });
         console.log('📄 Η σελίδα φορτώθηκε επιτυχώς!');
 
-        // Δοκιμή συναλλαγής για κουμπί CALL
-        await page.waitForSelector('.button-call-wrap a.btn-call', { timeout: 5000 }).catch(() => {
-          console.log('⚠️ Το κουμπί CALL δεν βρέθηκε!');
-        });
-
         const button = await page.$('.button-call-wrap a.btn-call');
         if (button) {
           console.log('📍 Βρέθηκε το κουμπί CALL. Προσπαθώ να κάνω συναλλαγή...');
@@ -50,7 +46,6 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
         } else {
           console.log('⚠️ Το κουμπί CALL δεν βρέθηκε. Ελέγξτε αν ο selector είναι σωστός.');
         }
-
       } catch (error) {
         console.error('❌ Σφάλμα κατά την εκτέλεση του trading bot:', error);
       }
