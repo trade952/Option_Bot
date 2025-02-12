@@ -22,9 +22,10 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
 (async () => {
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: '/usr/bin/google-chrome',
+    executablePath: puppeteer.executablePath(), // Χρήση του ενσωματωμένου Chromium
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
+  
 
   const page = await browser.newPage();
   console.log('✅ Το Puppeteer ξεκίνησε σωστά με το ενσωματωμένο Chromium!');
