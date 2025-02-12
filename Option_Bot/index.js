@@ -98,13 +98,26 @@ function analyzeStrategy(candles) {
 async function makeTrade(api, assetName, type) {
   try {
     console.log(`📈 Εκτέλεση συναλλαγής: ${type} στο ${assetName}`);
-    const tradeResponse = await api.buyv3.execute(assetName, type, 1); // Ποσό: 1
+    const tradeResponse = await api.buyv3.execute(assetName, type, 1); // Ποσό: 1 (μπορεί να προσαρμοστεί)
+    
     if (tradeResponse.success) {
       console.log(`✅ Συναλλαγή ${type} στο ${assetName} ολοκληρώθηκε επιτυχώς.`);
+      logTrade(assetName, type, 'SUCCESS');
     } else {
-      console.log(`❌ Αποτυχία συναλλαγής στο ${assetName}:`, tradeResponse.message);
+      console.log(`❌ Αποτυχία συναλλαγής στο ${assetName}: ${tradeResponse.message}`);
+      logTrade(assetName, type, 'FAILURE');
     }
   } catch (error) {
     console.error(`❌ Σφάλμα κατά την εκτέλεση συναλλαγής για το ${assetName}:`, error);
+    logTrade(assetName, type, 'ERROR');
   }
 }
+
+const fs = require('fs');
+
+function logTrade(assetName, type, status) {
+  const logMessage = `${new Date().toISOString()} - ${type} trade on ${assetName}: ${status}\n`;
+  fs.appendFileSync('trade_log.txt', logMessage);
+  console.log(`📝 Καταγραφή: ${logMessage}`);
+}
+

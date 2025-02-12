@@ -1,22 +1,18 @@
 #!/bin/bash
-
-# Πήγαινε στο project directory
-cd ~/Desktop/Option_Bot_Setup/Option_Bot || exit
-
-# Έλεγχος κατάστασης Git
-if [[ $(git status --porcelain) ]]; then
-  echo "🔄 Αλλαγές βρέθηκαν. Κάνουμε commit και push..."
+while true; do
+  echo "🔄 Ελέγχουμε για αλλαγές..."
   
-  # Προσθήκη όλων των αλλαγών
-  git add -A
+  git add .
+  
+  if [[ $(git diff --cached) ]]; then
+    echo "🔄 Αλλαγές βρέθηκαν. Κάνουμε commit και push..."
+    git commit -m "Auto-commit on $(date '+%Y-%m-%d %H:%M:%S')"
+    git push origin main
+    echo "✅ Αλλαγές ανέβηκαν στο GitHub."
+  else
+    echo "✅ Καμία νέα αλλαγή."
+  fi
 
-  # Κάνε commit με timestamp στο μήνυμα
-  git commit -m "Auto-commit on $(date +"%Y-%m-%d %H:%M:%S")"
-
-  # Κάνε push τις αλλαγές
-  git push origin main
-
-  echo "✅ Αλλαγές ανέβηκαν στο GitHub."
-else
-  echo "👌 Δεν υπάρχουν αλλαγές."
-fi
+  echo "⏸ Περιμένουμε 5 λεπτά πριν τον επόμενο έλεγχο..."
+  sleep 300  # Περιμένει 300 δευτερόλεπτα (5 λεπτά)
+done
