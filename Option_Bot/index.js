@@ -45,8 +45,9 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
 
           if (candles.length > 0) {
             const signal = analyzeStrategy(candles);
+            console.log(`📊 Σήμα: ${signal}`);
+            
             if (signal === 'CALL' || signal === 'PUT') {
-              console.log(`📊 Σήμα για ${signal} στο ${pair}`);
               await makeTrade(api, pair, signal);
             } else {
               console.log(`⚠️ Χωρίς σήμα συναλλαγής για το ${pair}`);
@@ -56,14 +57,12 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
       } catch (error) {
         console.error('❌ Σφάλμα:', error);
       }
-    } else {
-      console.log("⏸ Το bot είναι σε αναμονή.");
     }
     await new Promise(resolve => setTimeout(resolve, 10000));
   }
 })();
 
-// **Πραγματική στρατηγική (EMA + RSI + MACD)**
+// **Ανάλυση Στρατηγικής**
 function analyzeStrategy(candles) {
   const closePrices = candles.map(c => c.close);
 
@@ -95,7 +94,7 @@ function analyzeStrategy(candles) {
   }
 }
 
-// **Πραγματοποίηση συναλλαγής**
+// **Λειτουργία για Εκτέλεση Συναλλαγής**
 async function makeTrade(api, assetName, type) {
   try {
     console.log(`📈 Εκτέλεση συναλλαγής: ${type} στο ${assetName}`);
