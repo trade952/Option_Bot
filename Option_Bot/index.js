@@ -30,7 +30,7 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
     if (botActive) {
       console.log("🔄 Εκτέλεση trading bot...");
       try {
-        await page.goto('https://example.com');
+        await page.goto('https://pocketoption.com');
         console.log('📄 Σελίδα φορτώθηκε επιτυχώς!');
       } catch (error) {
         console.error('❌ Σφάλμα:', error);
