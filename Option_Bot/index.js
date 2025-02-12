@@ -1,38 +1,45 @@
+const PocketOptionAPI = require('./services/api'); // Σωστή εισαγωγή της κλάσης
+const express = require('express');
+
+let botActive = false;
+const app = express();
+
+app.get('/', (req, res) => {
+  res.send(`
+    <h1>Trading Bot Web Interface</h1>
+    <p>Status: <strong>${botActive ? '🟢 Ενεργό' : '🔴 Ανενεργό'}</strong></p>
+    <button onclick="fetch('/start').then(() => window.location.reload())">Start Bot</button>
+    <button onclick="fetch('/stop').then(() => window.location.reload())">Stop Bot</button>
+  `);
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
+
 (async () => {
   const api = new PocketOptionAPI('UNITED_STATES');
   await api.startWebsocket();
+  
+  console.log("🔄 Το bot είναι έτοιμο να ξεκινήσει!");
 
   while (true) {
     if (botActive) {
       console.log("🔄 Εκτέλεση trading bot...");
       try {
-        const favoritePairs = await getFavoritePairs(page);  // Λήψη αγαπημένων pairs από την οθόνη
-        console.log(`📋 Βρέθηκαν τα ακόλουθα αγαπημένα pairs: ${favoritePairs.join(', ')}`);
-        
+        const favoritePairs = ['EURUSD', 'GBPUSD', 'USDJPY'];
         for (const pair of favoritePairs) {
           console.log(`🔍 Ανάκτηση δεδομένων για το ${pair}...`);
-          
-          // Προσωρινά χρησιμοποιούμε ψεύτικα δεδομένα
-          const candles = Array(100).fill().map(() => ({ close: Math.random() * 100 }));
-          console.log(`📊 Δείγμα δεδομένων: ${candles.slice(0, 5).map(c => c.close)}`);
-
-          const signal = analyzeStrategy(candles);
-          console.log(`📢 Σήμα για ${pair}: ${signal}`);
-
-          if (signal === 'CALL' || signal === 'PUT') {
-            console.log(`📈 Προετοιμασία για συναλλαγή ${signal} στο ${pair}`);
-            await makeTrade(api, pair, signal, page);
-          } else {
-            console.log(`⚠️ Χωρίς σήμα συναλλαγής για το ${pair}`);
-          }
+          const candles = await api.getCandles(pair, 'M1', 100);
+          console.log(`📊 Δεδομένα Candles: ${candles.slice(0, 5).map(c => c.close)}`);
         }
       } catch (error) {
         console.error('❌ Σφάλμα:', error);
       }
     }
-    await new Promise(resolve => setTimeout(resolve, 10000));  // Καθυστέρηση 10 δευτερολέπτων
+    await new Promise(resolve => setTimeout(resolve, 10000));
   }
 })();
+
 
 // **Ανάλυση Στρατηγικής**
 function analyzeStrategy(candles) {
