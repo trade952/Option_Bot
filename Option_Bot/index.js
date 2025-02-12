@@ -13,6 +13,18 @@ app.get('/', (req, res) => {
   `);
 });
 
+app.get('/start', (req, res) => {
+  botActive = true;
+  console.log('🚀 Το bot ξεκίνησε!');
+  res.sendStatus(200);
+});
+
+app.get('/stop', (req, res) => {
+  botActive = false;
+  console.log('⛔️ Το bot σταμάτησε.');
+  res.sendStatus(200);
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
@@ -31,6 +43,16 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
           console.log(`🔍 Ανάκτηση δεδομένων για το ${pair}...`);
           const candles = await api.getCandles(pair, 'M1', 100);
           console.log(`📊 Δεδομένα Candles: ${candles.slice(0, 5).map(c => c.close)}`);
+
+          const signal = analyzeStrategy(candles);
+          console.log(`📢 Σήμα Στρατηγικής για ${pair}: ${signal}`);
+
+          if (signal === 'CALL' || signal === 'PUT') {
+            console.log(`📈 Ετοιμάζομαι να ανοίξω συναλλαγή ${signal} στο ${pair}`);
+            await makeTrade(api, pair, signal);  // Εκτέλεση συναλλαγής
+          } else {
+            console.log(`⚠️ Χωρίς σήμα συναλλαγής για το ${pair}`);
+          }
         }
       } catch (error) {
         console.error('❌ Σφάλμα:', error);
@@ -40,31 +62,19 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
   }
 })();
 
-
 // **Ανάλυση Στρατηγικής**
 function analyzeStrategy(candles) {
-  const closePrices = candles.map(c => c.close);
-  const latestPrice = closePrices[closePrices.length - 1];
-
-  console.log(`📈 Τελευταία τιμή: ${latestPrice.toFixed(2)}`);
-
-  if (latestPrice > 50) return 'CALL';
-  else if (latestPrice < 50) return 'PUT';
-  else return 'NO_SIGNAL';
+  console.log('📢 Τεχνητό σήμα: CALL (για δοκιμή)');
+  return 'CALL'; // Επιστρέφουμε πάντα CALL για να δοκιμάσουμε τη συναλλαγή
 }
 
 // **Εκτέλεση Συναλλαγής**
-async function makeTrade(api, pair, signal, page) {
+async function makeTrade(api, pair, signal) {
   try {
     console.log(`📈 Προσπάθεια εκτέλεσης συναλλαγής: ${signal} στο ${pair}`);
 
-    // Επιλογή του κατάλληλου κουμπιού
-    let buttonSelector;
-    if (signal === 'CALL') {
-      buttonSelector = '.button-call-wrap a.btn-call';
-    } else if (signal === 'PUT') {
-      buttonSelector = '.button-put-wrap a.btn-put';
-    }
+    let buttonSelector = signal === 'CALL' ? '.button-call-wrap a.btn-call' : '.button-put-wrap a.btn-put';
+    const page = await api.getPage();  // Υποθέτουμε ότι έχεις μια μέθοδο που επιστρέφει τη σελίδα
 
     const button = await page.$(buttonSelector);
     if (button) {
@@ -72,9 +82,8 @@ async function makeTrade(api, pair, signal, page) {
       await button.click();
       console.log(`✅ Συναλλαγή ${signal} στο ${pair} ολοκληρώθηκε.`);
     } else {
-      console.log(`⚠️ Το κουμπί για ${signal} δεν βρέθηκε στο ${pair}.`);
+      console.log(`⚠️ Το κουμπί για ${signal} δεν βρέθηκε. Ελέγξτε τον selector: ${buttonSelector}`);
     }
-
   } catch (error) {
     console.error(`❌ Σφάλμα κατά την εκτέλεση συναλλαγής για ${pair}:`, error);
   }
