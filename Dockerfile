@@ -1,8 +1,10 @@
 # Χρησιμοποιούμε το Node 18 ως βάση
 FROM node:18
 
-# Εγκατάσταση απαραίτητων βιβλιοθηκών για Puppeteer (Chromium)
+# Εγκατάσταση απαραίτητων βιβλιοθηκών για Puppeteer (Chromium και Google Chrome)
 RUN apt-get update && apt-get install -y \
+  wget \
+  gnupg \
   libnss3 \
   libxss1 \
   libasound2 \
@@ -25,6 +27,11 @@ RUN apt-get update && apt-get install -y \
   xdg-utils \
   && rm -rf /var/lib/apt/lists/*
 
+# Εγκατάσταση Google Chrome
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
+  && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
+  && apt-get update && apt-get install -y google-chrome-stable
+
 # Ορίζουμε το working directory
 WORKDIR /app
 
@@ -35,19 +42,12 @@ RUN npm install
 # Αντιγραφή όλων των αρχείων από τον φάκελο Option_Bot
 COPY Option_Bot/. ./
 
-# Εκθέτουμε το port 10000 (το Render θα χρησιμοποιήσει τη μεταβλητή PORT)
+# Εκθέτουμε το port 10000
 EXPOSE 10000
+
+# Ορίζουμε μεταβλητές περιβάλλοντος για το Puppeteer
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
 
 # Εκκίνηση της εφαρμογής
 CMD ["node", "index.js"]
-
-# Χρησιμοποιούμε το puppeteer στο Docker
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false \
-    PUPPETEER_CACHE_DIR=/root/.cache/puppeteer
-RUN npm install puppeteer
-
-# Εγκατάσταση Google Chrome
-RUN apt-get update && apt-get install -y wget gnupg \
-  && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
-  && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
-  && apt-get update && apt-get install -y google-chrome-stable
