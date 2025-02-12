@@ -1,6 +1,6 @@
-const puppeteer = require('puppeteer');
 const express = require('express');
-const PocketOptionAPI = require('./services/api');
+const puppeteer = require('puppeteer');
+const { EMA, RSI, MACD } = require('technicalindicators');
 
 let botActive = false;
 const app = express();
@@ -24,29 +24,14 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
   });
 
   const page = await browser.newPage();
-  const api = new PocketOptionAPI('UNITED_STATES');
-  await api.startWebsocket();
-
-  console.log("🔄 Το bot είναι έτοιμο να ξεκινήσει!");
+  console.log('✅ Το Puppeteer ξεκίνησε σωστά με το ενσωματωμένο Chromium!');
 
   while (true) {
     if (botActive) {
       console.log("🔄 Εκτέλεση trading bot...");
       try {
-        const favoritePairs = ['EURUSD', 'GBPUSD', 'USDJPY'];
-        for (const pair of favoritePairs) {
-          console.log(`🔍 Ανάκτηση δεδομένων για το ${pair}...`);
-          const candles = await api.getCandles(pair, 'M1', 100);
-          console.log(`📊 Δεδομένα Candles: ${candles.slice(0, 5).map(c => c.close)}`);
-
-          const signal = analyzeStrategy(candles);
-          if (signal === 'CALL' || signal === 'PUT') {
-            console.log(`📈 Ετοιμάζομαι να ανοίξω συναλλαγή ${signal} στο ${pair}`);
-            await makeTrade(api, pair, signal, page);
-          } else {
-            console.log(`⚠️ Χωρίς σήμα συναλλαγής για το ${pair}`);
-          }
-        }
+        await page.goto('https://example.com');
+        console.log('📄 Σελίδα φορτώθηκε επιτυχώς!');
       } catch (error) {
         console.error('❌ Σφάλμα:', error);
       }
