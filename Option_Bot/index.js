@@ -18,17 +18,19 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
+const puppeteer = require('puppeteer');
+
 (async () => {
-  console.log('🚀 Ξεκινάει το Puppeteer...');
   const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: '/usr/bin/google-chrome',
+    headless: true, // Εκτέλεση χωρίς GUI
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
-  
 
   const page = await browser.newPage();
   console.log('✅ Το Puppeteer ξεκίνησε σωστά με το ενσωματωμένο Chromium!');
+
+  await page.goto('https://pocketoption.com');
+  console.log('📄 Η σελίδα Pocket Option φορτώθηκε επιτυχώς!');
 
   while (true) {
     if (botActive) {
