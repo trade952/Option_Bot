@@ -85,3 +85,4 @@ async function makeTrade(api, pair, signal, page) {
     console.error(`❌ Σφάλμα κατά την εκτέλεση συναλλαγής για ${pair}:`, error);
   }
 }
+
