@@ -40,3 +40,8 @@ EXPOSE 10000
 
 # Εκκίνηση της εφαρμογής
 CMD ["node", "index.js"]
+
+# Χρησιμοποιούμε το puppeteer στο Docker
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false \
+    PUPPETEER_CACHE_DIR=/root/.cache/puppeteer
+RUN npm install puppeteer
