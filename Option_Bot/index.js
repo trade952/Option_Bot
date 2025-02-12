@@ -20,8 +20,7 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
 (async () => {
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    executablePath: '/usr/bin/google-chrome' // Χρήση του προεγκατεστημένου Chrome στο Render
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
   const page = await browser.newPage();
