@@ -1,37 +1,19 @@
-const PocketOptionAPI = require('./services/api'); // Σωστή εισαγωγή της κλάσης
-const express = require('express');
+// Εξασφαλίζουμε ότι έχουμε το Puppeteer για να πάρουμε τη σελίδα (page)
+const puppeteer = require('puppeteer');
 
-let botActive = false;
-const app = express();
-
-app.get('/', (req, res) => {
-  res.send(`
-    <h1>Trading Bot Web Interface</h1>
-    <p>Status: <strong>${botActive ? '🟢 Ενεργό' : '🔴 Ανενεργό'}</strong></p>
-    <button onclick="fetch('/start').then(() => window.location.reload())">Start Bot</button>
-    <button onclick="fetch('/stop').then(() => window.location.reload())">Stop Bot</button>
-  `);
-});
-
-app.get('/start', (req, res) => {
-  botActive = true;
-  console.log('🚀 Το bot ξεκίνησε!');
-  res.sendStatus(200);
-});
-
-app.get('/stop', (req, res) => {
-  botActive = false;
-  console.log('⛔️ Το bot σταμάτησε.');
-  res.sendStatus(200);
-});
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
+async function getPage() {
+  const browser = await puppeteer.launch({ headless: false });
+  const page = await browser.newPage();
+  await page.goto('https://pocketoption.com'); // Αντικατάστησε το με την πραγματική URL
+  return page;
+}
 
 (async () => {
   const api = new PocketOptionAPI('UNITED_STATES');
   await api.startWebsocket();
   
+  const page = await getPage(); // Παίρνουμε τη σελίδα από το Puppeteer
+
   console.log("🔄 Το bot είναι έτοιμο να ξεκινήσει!");
 
   while (true) {
@@ -49,7 +31,7 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
 
           if (signal === 'CALL' || signal === 'PUT') {
             console.log(`📈 Ετοιμάζομαι να ανοίξω συναλλαγή ${signal} στο ${pair}`);
-            await makeTrade(api, pair, signal);  // Εκτέλεση συναλλαγής
+            await makeTrade(api, pair, signal, page);  // Περνάμε το `page` στη συναλλαγή
           } else {
             console.log(`⚠️ Χωρίς σήμα συναλλαγής για το ${pair}`);
           }
@@ -62,21 +44,14 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
   }
 })();
 
-// **Ανάλυση Στρατηγικής**
-function analyzeStrategy(candles) {
-  console.log('📢 Τεχνητό σήμα: CALL (για δοκιμή)');
-  return 'CALL'; // Επιστρέφουμε πάντα CALL για να δοκιμάσουμε τη συναλλαγή
-}
-
 // **Εκτέλεση Συναλλαγής**
-async function makeTrade(api, pair, signal) {
+async function makeTrade(api, pair, signal, page) {
   try {
     console.log(`📈 Προσπάθεια εκτέλεσης συναλλαγής: ${signal} στο ${pair}`);
 
     let buttonSelector = signal === 'CALL' ? '.button-call-wrap a.btn-call' : '.button-put-wrap a.btn-put';
-    const page = await api.getPage();  // Υποθέτουμε ότι έχεις μια μέθοδο που επιστρέφει τη σελίδα
-
     const button = await page.$(buttonSelector);
+
     if (button) {
       console.log(`📍 Βρέθηκε το κουμπί για ${signal}. Εκτέλεση συναλλαγής...`);
       await button.click();
@@ -86,20 +61,5 @@ async function makeTrade(api, pair, signal) {
     }
   } catch (error) {
     console.error(`❌ Σφάλμα κατά την εκτέλεση συναλλαγής για ${pair}:`, error);
-  }
-}
-
-// **Λήψη Αγαπημένων Pairs**
-async function getFavoritePairs(page) {
-  try {
-    const pairs = await page.evaluate(() => {
-      const elements = document.querySelectorAll('.assets-favorites-item');
-      return Array.from(elements).map(el => el.getAttribute('data-id'));
-    });
-    console.log(`📋 Αγαπημένα pairs: ${pairs.join(', ')}`);
-    return pairs;
-  } catch (error) {
-    console.error('❌ Σφάλμα κατά την ανάκτηση αγαπημένων pairs:', error);
-    return [];
   }
 }
