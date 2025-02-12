@@ -1,6 +1,7 @@
 const express = require('express');
 const { EMA, RSI, MACD } = require('technicalindicators');
 const PocketOptionAPI = require('./services/api');
+const fs = require('fs');
 
 let botActive = false;
 const app = express();
@@ -30,6 +31,7 @@ app.get('/stop', (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
+// Κύριος κώδικας του bot
 (async () => {
   const api = new PocketOptionAPI('UNITED_STATES');
   await api.startWebsocket();
@@ -43,20 +45,25 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
           console.log(`🔍 Ανάκτηση δεδομένων για το ${pair}...`);
           const candles = await api.getCandles(pair, 'M1', 100);
 
-          if (candles.length > 0) {
+          if (candles.length > 50) {  // Βεβαιωνόμαστε ότι έχουμε αρκετά δεδομένα
             const signal = analyzeStrategy(candles);
             console.log(`📊 Σήμα: ${signal}`);
-            
+
             if (signal === 'CALL' || signal === 'PUT') {
               await makeTrade(api, pair, signal);
             } else {
               console.log(`⚠️ Χωρίς σήμα συναλλαγής για το ${pair}`);
             }
+          } else {
+            console.log(`⚠️ Λιγότερα από 50 κεριά διαθέσιμα για το ${pair}.`);
           }
         }
       } catch (error) {
         console.error('❌ Σφάλμα:', error);
+        logError(error.message);
       }
+    } else {
+      console.log("⏸ Το bot είναι σε αναμονή.");
     }
     await new Promise(resolve => setTimeout(resolve, 10000));
   }
@@ -65,6 +72,11 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
 // **Ανάλυση Στρατηγικής**
 function analyzeStrategy(candles) {
   const closePrices = candles.map(c => c.close);
+
+  if (closePrices.length < 200) {
+    console.log('❗️ Not enough data for analysis.');
+    return 'NO_SIGNAL';
+  }
 
   const ema50 = EMA.calculate({ period: 50, values: closePrices });
   const ema200 = EMA.calculate({ period: 200, values: closePrices });
@@ -98,13 +110,15 @@ function analyzeStrategy(candles) {
 async function makeTrade(api, assetName, type) {
   try {
     console.log(`📈 Εκτέλεση συναλλαγής: ${type} στο ${assetName}`);
-    const tradeResponse = await api.buyv3.execute(assetName, type, 1); // Ποσό: 1 (μπορεί να προσαρμοστεί)
-    
-    if (tradeResponse.success) {
+    const tradeResponse = await api.buyv3.execute(assetName, type, 1);  // Ποσό: 1 (προσαρμόσιμο)
+
+    console.log(`🛠 Trade response:`, tradeResponse);
+
+    if (tradeResponse && tradeResponse.success) {
       console.log(`✅ Συναλλαγή ${type} στο ${assetName} ολοκληρώθηκε επιτυχώς.`);
       logTrade(assetName, type, 'SUCCESS');
     } else {
-      console.log(`❌ Αποτυχία συναλλαγής στο ${assetName}: ${tradeResponse.message}`);
+      console.log(`❌ Αποτυχία συναλλαγής στο ${assetName}: ${tradeResponse?.message || 'No response'}`);
       logTrade(assetName, type, 'FAILURE');
     }
   } catch (error) {
@@ -113,11 +127,16 @@ async function makeTrade(api, assetName, type) {
   }
 }
 
-const fs = require('fs');
-
+// **Καταγραφή συναλλαγών**
 function logTrade(assetName, type, status) {
   const logMessage = `${new Date().toISOString()} - ${type} trade on ${assetName}: ${status}\n`;
   fs.appendFileSync('trade_log.txt', logMessage);
   console.log(`📝 Καταγραφή: ${logMessage}`);
 }
 
+// **Καταγραφή σφαλμάτων**
+function logError(message) {
+  const logMessage = `${new Date().toISOString()} - ERROR: ${message}\n`;
+  fs.appendFileSync('error_log.txt', logMessage);
+  console.error(`🛑 Καταγραφή σφάλματος: ${logMessage}`);
+}
