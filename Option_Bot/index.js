@@ -18,8 +18,6 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
-const puppeteer = require('puppeteer');
-
 (async () => {
   const browser = await puppeteer.launch({
     headless: true, // Εκτέλεση χωρίς GUI
