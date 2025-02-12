@@ -1,7 +1,7 @@
 # Χρησιμοποιούμε το Node 18 ως βάση
 FROM node:18
 
-# Εγκατάσταση απαραίτητων βιβλιοθηκών για Puppeteer (Chromium και Google Chrome)
+# Εγκατάσταση απαραίτητων βιβλιοθηκών για Puppeteer και Google Chrome
 RUN apt-get update && apt-get install -y \
   wget \
   gnupg \
