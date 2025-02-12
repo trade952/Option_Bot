@@ -1,37 +1,3 @@
-const express = require('express');
-const { EMA, RSI, MACD } = require('technicalindicators');
-const PocketOptionAPI = require('./services/api');
-const fs = require('fs');
-
-let botActive = false;
-const app = express();
-
-// Web Interface
-app.get('/', (req, res) => {
-  res.send(`
-    <h1>Trading Bot Web Interface</h1>
-    <p>Status: <strong>${botActive ? '🟢 Ενεργό' : '🔴 Ανενεργό'}</strong></p>
-    <button onclick="fetch('/start').then(() => window.location.reload())">Start Bot</button>
-    <button onclick="fetch('/stop').then(() => window.location.reload())">Stop Bot</button>
-  `);
-});
-
-app.get('/start', (req, res) => {
-  botActive = true;
-  console.log('🚀 Το bot ξεκίνησε!');
-  res.sendStatus(200);
-});
-
-app.get('/stop', (req, res) => {
-  botActive = false;
-  console.log('⛔️ Το bot σταμάτησε.');
-  res.sendStatus(200);
-});
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
-
-// Κύριος κώδικας του bot
 (async () => {
   const api = new PocketOptionAPI('UNITED_STATES');
   await api.startWebsocket();
@@ -40,15 +6,13 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
     if (botActive) {
       console.log("🔄 Εκτέλεση trading bot...");
       try {
-        const favoritePairs = ['EURUSD', 'GBPUSD', 'USDJPY'];
+        const favoritePairs = await getFavoritePairs(page);  // Ανάκτηση των αγαπημένων
         for (const pair of favoritePairs) {
           console.log(`🔍 Ανάκτηση δεδομένων για το ${pair}...`);
           const candles = await api.getCandles(pair, 'M1', 100);
 
-          if (candles.length > 50) {  // Βεβαιωνόμαστε ότι έχουμε αρκετά δεδομένα
+          if (candles.length >= 50) {
             const signal = analyzeStrategy(candles);
-            console.log(`📊 Σήμα: ${signal}`);
-
             if (signal === 'CALL' || signal === 'PUT') {
               await makeTrade(api, pair, signal);
             } else {
@@ -60,14 +24,12 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
         }
       } catch (error) {
         console.error('❌ Σφάλμα:', error);
-        logError(error.message);
       }
-    } else {
-      console.log("⏸ Το bot είναι σε αναμονή.");
     }
     await new Promise(resolve => setTimeout(resolve, 10000));
   }
 })();
+
 
 // **Ανάλυση Στρατηγικής**
 function analyzeStrategy(candles) {
