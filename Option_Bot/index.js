@@ -1,10 +1,12 @@
-const WebSocket = require('ws');
 const express = require('express');
+const WebSocket = require('ws');
 const { EMA, RSI, MACD } = require('technicalindicators');
+const PocketOptionAPI = require('./services/api');  // Προσαρμογή για PocketOptionAPI
 
 let botActive = false;
 const app = express();
 
+// Web Interface
 app.get('/', (req, res) => {
   res.send(`
     <h1>Trading Bot Web Interface</h1>
@@ -30,42 +32,53 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
 (async () => {
-  const ws = new WebSocket('wss://demo-api-eu.po.market/socket.io/?EIO=4&transport=websocket');
+  const api = new PocketOptionAPI('UNITED_STATES');
+  await api.startWebsocket();
 
-  ws.on('open', () => {
-    console.log('✅ WebSocket συνδεδεμένο!');
-  });
-
-  ws.on('message', async (data) => {
-    console.log(`📩 Λήψη δεδομένων: ${data}`);
-
+  while (true) {
     if (botActive) {
-      const parsedData = JSON.parse(data); // Προσαρμόστε το ανάλογα με το format των δεδομένων
-      const candles = parsedData.candles || []; // Παράδειγμα εξαγωγής των candles
+      console.log("🔄 Εκτέλεση trading bot...");
+      try {
+        const pairs = await getAvailablePairs(api);
+        
+        for (const pair of pairs) {
+          console.log(`🔍 Ανάκτηση δεδομένων για το ${pair}...`);
+          const candles = await api.fetchCandles(pair, 'M1', 100);
 
-      if (candles.length > 0) {
-        const signal = analyzeStrategy(candles);
-        console.log(`📊 Σήμα: ${signal}`);
+          if (candles.length > 0) {
+            const signal = analyzeStrategy(candles);
+            console.log(`📊 Σήμα: ${signal}`);
 
-        if (signal === 'CALL' || signal === 'PUT') {
-          await makeTrade(parsedData.pair, signal); // Παράδειγμα συναλλαγής
-        } else {
-          console.log('⚠️ Χωρίς σήμα συναλλαγής.');
+            if (signal === 'CALL' || signal === 'PUT') {
+              await makeTrade(api, pair, signal);
+            } else {
+              console.log(`⚠️ Χωρίς σήμα συναλλαγής για το ${pair}`);
+            }
+          } else {
+            console.log(`⚠️ Δεν βρέθηκαν δεδομένα για το ${pair}`);
+          }
         }
+      } catch (error) {
+        console.error('❌ Σφάλμα:', error);
       }
     }
-  });
-
-  ws.on('close', () => {
-    console.log('❌ Η σύνδεση WebSocket έκλεισε.');
-  });
-
-  ws.on('error', (error) => {
-    console.error(`❌ Σφάλμα WebSocket: ${error.message}`);
-  });
+    await new Promise(resolve => setTimeout(resolve, 10000));
+  }
 })();
 
-// **Ανάλυση Στρατηγικής**
+// **Ανάκτηση διαθέσιμων ζευγών από την API**
+async function getAvailablePairs(api) {
+  try {
+    const pairs = await api.getAvailablePairs();
+    console.log(`⭐ Διαθέσιμα ζευγάρια: ${pairs.join(", ")}`);
+    return pairs;
+  } catch (error) {
+    console.error("❌ Σφάλμα κατά την ανάκτηση ζευγαριών:", error);
+    return [];
+  }
+}
+
+// **Ανάλυση στρατηγικής**
 function analyzeStrategy(candles) {
   const closePrices = candles.map(c => c.close);
 
@@ -97,12 +110,16 @@ function analyzeStrategy(candles) {
   }
 }
 
-// **Εκτέλεση Συναλλαγής**
-async function makeTrade(pair, type) {
+// **Εκτέλεση συναλλαγής μέσω API**
+async function makeTrade(api, pair, type) {
   try {
     console.log(`📈 Εκτέλεση συναλλαγής: ${type} στο ${pair}`);
-    // Προσάρμοσε εδώ τη λογική για εκτέλεση συναλλαγής μέσω API ή άλλης μεθόδου
-    console.log(`✅ Συναλλαγή ${type} στο ${pair} ολοκληρώθηκε.`);
+    const tradeResponse = await api.buyv3.execute(pair, type, 1);
+    if (tradeResponse.success) {
+      console.log(`✅ Συναλλαγή ${type} στο ${pair} ολοκληρώθηκε επιτυχώς.`);
+    } else {
+      console.log(`❌ Αποτυχία συναλλαγής: ${tradeResponse.message}`);
+    }
   } catch (error) {
     console.error(`❌ Σφάλμα κατά την εκτέλεση συναλλαγής: ${error.message}`);
   }
