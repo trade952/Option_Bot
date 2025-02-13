@@ -31,10 +31,15 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
   try {
     const browser = await puppeteer.launch({
       headless: true,
+      executablePath: '/usr/bin/google-chrome-stable',
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
-    console.log('✅ Το Puppeteer ξεκίνησε σωστά με το ενσωματωμένο Chromium!');
+    console.log('✅ Το Puppeteer ξεκίνησε σωστά με το Google Chrome!');
+    const page = await browser.newPage();
+    await page.goto('https://example.com');
+    console.log('📄 Η σελίδα φορτώθηκε επιτυχώς!');
+    
     await browser.close();
   } catch (error) {
     console.error('❌ Σφάλμα κατά την εκκίνηση του Puppeteer:', error);
