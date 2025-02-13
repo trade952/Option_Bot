@@ -1,12 +1,11 @@
 const express = require('express');
-const WebSocket = require('ws');
+const PocketOptionAPI = require('./PocketOptionAPI');  // Κλάση WebSocket API
 const { EMA, RSI, MACD } = require('technicalindicators');
-const PocketOptionAPI = require('./services/api');  // Προσαρμογή για PocketOptionAPI
 
 let botActive = false;
 const app = express();
+const api = new PocketOptionAPI('UNITED_STATES');
 
-// Web Interface
 app.get('/', (req, res) => {
   res.send(`
     <h1>Trading Bot Web Interface</h1>
@@ -16,9 +15,10 @@ app.get('/', (req, res) => {
   `);
 });
 
-app.get('/start', (req, res) => {
+app.get('/start', async (req, res) => {
   botActive = true;
   console.log('🚀 Το bot ξεκίνησε!');
+  await api.startWebsocket();
   res.sendStatus(200);
 });
 
@@ -31,54 +31,43 @@ app.get('/stop', (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
+// Κύριος κώδικας του bot
 (async () => {
-  const api = new PocketOptionAPI('UNITED_STATES');
-  await api.startWebsocket();
-
   while (true) {
     if (botActive) {
-      console.log("🔄 Εκτέλεση trading bot...");
+      console.log('🔄 Εκτέλεση trading bot...');
+      
       try {
-        const pairs = await getAvailablePairs(api);
-        
-        for (const pair of pairs) {
-          console.log(`🔍 Ανάκτηση δεδομένων για το ${pair}...`);
-          const candles = await api.fetchCandles(pair, 'M1', 100);
+        // Ανάκτηση δεδομένων από WebSocket
+        api.getCandles('EURUSD', 'M1', 100);  // Παράδειγμα ανάκτησης δεδομένων
 
-          if (candles.length > 0) {
-            const signal = analyzeStrategy(candles);
-            console.log(`📊 Σήμα: ${signal}`);
+        // Προσθήκη ακρόασης δεδομένων candles
+        api.on('candles', (candles) => {
+          console.log('📊 Candles:', candles);
 
-            if (signal === 'CALL' || signal === 'PUT') {
-              await makeTrade(api, pair, signal);
-            } else {
-              console.log(`⚠️ Χωρίς σήμα συναλλαγής για το ${pair}`);
-            }
-          } else {
-            console.log(`⚠️ Δεν βρέθηκαν δεδομένα για το ${pair}`);
+          const signal = analyzeStrategy(candles);
+          console.log(`📈 Σήμα στρατηγικής: ${signal}`);
+
+          if (signal === 'CALL' || signal === 'PUT') {
+            api.buyTrade('EURUSD', signal, 1);
           }
-        }
+        });
+
+        // Ανάκτηση υπολοίπου
+        api.getBalances();
+        api.on('balances', (balances) => {
+          console.log('💰 Υπόλοιπα λογαριασμού:', balances);
+        });
+
       } catch (error) {
-        console.error('❌ Σφάλμα:', error);
+        console.error('❌ Σφάλμα κατά την εκτέλεση του bot:', error);
       }
     }
     await new Promise(resolve => setTimeout(resolve, 10000));
   }
 })();
 
-// **Ανάκτηση διαθέσιμων ζευγών από την API**
-async function getAvailablePairs(api) {
-  try {
-    const pairs = await api.getAvailablePairs();
-    console.log(`⭐ Διαθέσιμα ζευγάρια: ${pairs.join(", ")}`);
-    return pairs;
-  } catch (error) {
-    console.error("❌ Σφάλμα κατά την ανάκτηση ζευγαριών:", error);
-    return [];
-  }
-}
-
-// **Ανάλυση στρατηγικής**
+// **Ανάλυση στρατηγικής EMA + RSI + MACD**
 function analyzeStrategy(candles) {
   const closePrices = candles.map(c => c.close);
 
@@ -107,20 +96,5 @@ function analyzeStrategy(candles) {
     return 'PUT';
   } else {
     return 'NO_SIGNAL';
-  }
-}
-
-// **Εκτέλεση συναλλαγής μέσω API**
-async function makeTrade(api, pair, type) {
-  try {
-    console.log(`📈 Εκτέλεση συναλλαγής: ${type} στο ${pair}`);
-    const tradeResponse = await api.buyv3.execute(pair, type, 1);
-    if (tradeResponse.success) {
-      console.log(`✅ Συναλλαγή ${type} στο ${pair} ολοκληρώθηκε επιτυχώς.`);
-    } else {
-      console.log(`❌ Αποτυχία συναλλαγής: ${tradeResponse.message}`);
-    }
-  } catch (error) {
-    console.error(`❌ Σφάλμα κατά την εκτέλεση συναλλαγής: ${error.message}`);
   }
 }
