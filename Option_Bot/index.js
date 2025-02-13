@@ -1,58 +1,59 @@
-const WebSocket = require('ws');
+const express = require('express');
+const PocketOptionAPI = require('./services/PocketOptionAPI');
 
-class PocketOptionAPI {
-  constructor(url) {
-    this.url = url || 'wss://demo-api-eu.po.market/socket.io/?EIO=4&transport=websocket';
-    this.ws = null;
-  }
+let botActive = false;
+const api = new PocketOptionAPI();  // Μεταφέραμε την αρχικοποίηση του API εδώ
 
-  connect() {
-    return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(this.url);
+const app = express();
 
-      this.ws.on('open', () => {
-        console.log('✅ WebSocket συνδεδεμένο!');
-        resolve();
-      });
+app.get('/', (req, res) => {
+  res.send(`
+    <h1>Trading Bot Web Interface</h1>
+    <p>Status: <strong>${botActive ? '🟢 Ενεργό' : '🔴 Ανενεργό'}</strong></p>
+    <button onclick="fetch('/start').then(() => window.location.reload())">Start Bot</button>
+    <button onclick="fetch('/stop').then(() => window.location.reload())">Stop Bot</button>
+  `);
+});
 
-      this.ws.on('message', (data) => {
-        console.log(`📩 Λήψη δεδομένων: ${data}`);
-      });
+app.get('/start', async (req, res) => {
+  botActive = true;
+  console.log('🚀 Το bot ξεκίνησε!');
+  await api.connect();  // Εγκαθιστούμε τη σύνδεση WebSocket
+  res.sendStatus(200);
+});
 
-      this.ws.on('close', () => {
-        console.log('❌ Η σύνδεση WebSocket έκλεισε.');
-      });
+app.get('/stop', (req, res) => {
+  botActive = false;
+  console.log('⛔️ Το bot σταμάτησε.');
+  api.close();  // Κλείνουμε το WebSocket
+  res.sendStatus(200);
+});
 
-      this.ws.on('error', (error) => {
-        console.error(`❌ Σφάλμα WebSocket: ${error.message}`);
-        reject(error);
-      });
-    });
-  }
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
-  sendMessage(message) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(message);
-      console.log(`📤 Αποστολή μηνύματος: ${message}`);
-    } else {
-      console.log('⚠️ WebSocket δεν είναι συνδεδεμένο.');
+// Κύριος κώδικας του bot
+(async () => {
+  while (true) {
+    if (botActive) {
+      console.log('🔄 Εκτέλεση trading bot...');
+      
+      try {
+        if (api.isConnected()) {
+          console.log('✅ Το WebSocket είναι συνδεδεμένο.');
+
+          // Παράδειγμα αποστολής μηνύματος και επεξεργασίας στρατηγικής
+          api.sendMessage('GET_CANDLES EURUSD M1 100');
+        } else {
+          console.log('❌ Το WebSocket δεν είναι συνδεδεμένο.');
+        }
+      } catch (error) {
+        console.error('❌ Σφάλμα κατά την εκτέλεση του bot:', error);
+      }
     }
+    await new Promise(resolve => setTimeout(resolve, 10000));
   }
-
-  close() {
-    if (this.ws) {
-      this.ws.close();
-      console.log('🔒 WebSocket έκλεισε.');
-    }
-  }
-
-  isConnected() {
-    return this.ws && this.ws.readyState === WebSocket.OPEN;
-  }
-}
-
-module.exports = PocketOptionAPI;
-
+})();
 
 // **Ανάλυση στρατηγικής EMA + RSI + MACD**
 function analyzeStrategy(candles) {
