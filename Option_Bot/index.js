@@ -1,5 +1,5 @@
 const express = require('express');
-const PocketOptionAPI = require('./PocketOptionAPI');
+const PocketOptionAPI = require('./services/PocketOptionAPI');
 
 let botActive = false;
 const app = express();
