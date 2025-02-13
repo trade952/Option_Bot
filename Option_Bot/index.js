@@ -15,7 +15,6 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Start/Stop Bot
 app.get('/start', (req, res) => {
   botActive = true;
   console.log('🚀 Το bot ξεκίνησε!');
@@ -40,26 +39,15 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
     if (botActive) {
       console.log("🔄 Εκτέλεση trading bot...");
       try {
-        const availablePairs = await api.getAvailablePairs(); // Ανάκτηση διαθέσιμων ζευγαριών μέσω της API
-        console.log(`🔍 Διαθέσιμα ζευγάρια: ${availablePairs.join(', ')}`);
+        const pairsWithPayout = getAvailablePairsWithPayout();
 
-        for (const pair of availablePairs) {
-          console.log(`🔍 Ανάκτηση δεδομένων για το ${pair}...`);
-          const candles = await fetchCandles(api, pair, 'M1', 100); // Ανάκτηση 100 candles
-
-          if (candles.length > 0) {
-            const signal = analyzeStrategy(candles);
-            console.log(`📊 Σήμα: ${signal}`);
-
-            if (signal === 'CALL' || signal === 'PUT') {
-              await makeTrade(api, pair, signal);
-            } else {
-              console.log(`⚠️ Χωρίς σήμα συναλλαγής για το ${pair}`);
-            }
-          } else {
-            console.log(`⚠️ Δεν βρέθηκαν δεδομένα για το ${pair}`);
+        pairsWithPayout.forEach(({ pairName, payout }) => {
+          console.log(`🔍 Ζεύγος: ${pairName}, Ποσοστό Πληρωμής: ${payout}%`);
+          if (parseInt(payout) >= 80) {
+            console.log(`⚡ Συναλλαγή μπορεί να γίνει για το ${pairName} με payout ${payout}%`);
+            // Κάνε trade εδώ αν θέλεις
           }
-        }
+        });
       } catch (error) {
         console.error('❌ Σφάλμα:', error);
       }
@@ -68,49 +56,21 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
   }
 })();
 
-// **Ανάλυση στρατηγικής**
-function analyzeStrategy(candles) {
-  const closePrices = candles.map(c => c.close);
+// **Συνάρτηση για εξαγωγή αγαπημένων ζευγών και payout**
+function getAvailablePairsWithPayout() {
+  let pairs = [];
+  let assets = document.querySelectorAll(".assets-favorites-item__line");
 
-  const ema50 = EMA.calculate({ period: 50, values: closePrices });
-  const ema200 = EMA.calculate({ period: 200, values: closePrices });
-  const rsi = RSI.calculate({ period: 14, values: closePrices });
-  const macd = MACD.calculate({
-    values: closePrices,
-    fastPeriod: 12,
-    slowPeriod: 26,
-    signalPeriod: 9,
-    SimpleMAOscillator: false,
-    SimpleMASignal: false
+  assets.forEach(asset => {
+    let pairNameElement = asset.querySelector(".assets-favorites-item__label");
+    let payoutElement = asset.querySelector(".payout__number");
+
+    if (pairNameElement && payoutElement) {
+      let pairName = pairNameElement.innerText.trim();
+      let payout = payoutElement.innerText.trim();
+      pairs.push({ pairName, payout });
+    }
   });
 
-  const latestEMA50 = ema50[ema50.length - 1] || 0;
-  const latestEMA200 = ema200[ema200.length - 1] || 0;
-  const latestRSI = rsi[rsi.length - 1] || 0;
-  const latestMACD = macd[macd.length - 1]?.histogram || 0;
-
-  console.log(`📊 EMA50: ${latestEMA50.toFixed(2)}, EMA200: ${latestEMA200.toFixed(2)}, RSI: ${latestRSI.toFixed(2)}, MACD Histogram: ${latestMACD.toFixed(2)}`);
-
-  if (latestEMA50 > latestEMA200 && latestRSI < 30 && latestMACD > 0) {
-    return 'CALL';
-  } else if (latestEMA50 < latestEMA200 && latestRSI > 70 && latestMACD < 0) {
-    return 'PUT';
-  } else {
-    return 'NO_SIGNAL';
-  }
-}
-
-// **Εκτέλεση συναλλαγής μέσω API**
-async function makeTrade(apiInstance, pair, type) {
-  try {
-    console.log(`📈 Εκτέλεση συναλλαγής: ${type} στο ${pair}`);
-    const tradeResponse = await apiInstance.buyv3.execute(pair, type, 1); // Ποσό: 1
-    if (tradeResponse.success) {
-      console.log(`✅ Συναλλαγή ${type} στο ${pair} ολοκληρώθηκε επιτυχώς.`);
-    } else {
-      console.log(`❌ Αποτυχία συναλλαγής στο ${pair}: ${tradeResponse.message}`);
-    }
-  } catch (error) {
-    console.error(`❌ Σφάλμα κατά την εκτέλεση συναλλαγής: ${error.message}`);
-  }
+  return pairs;
 }
