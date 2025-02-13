@@ -2,8 +2,11 @@ const express = require('express');
 const PocketOptionAPI = require('./services/PocketOptionAPI');
 
 let botActive = false;
+let api = null;  // Δημιουργούμε το api εδώ
+
 const app = express();
 
+// Web Interface
 app.get('/', (req, res) => {
   res.send(`
     <h1>Trading Bot Web Interface</h1>
@@ -14,18 +17,20 @@ app.get('/', (req, res) => {
 });
 
 app.get('/start', async (req, res) => {
-  botActive = true;
-  console.log('🚀 Το bot ξεκίνησε!');
-
-  const api = new PocketOptionAPI();
-  await api.startWebsocket();
-
+  if (!botActive) {
+    botActive = true;
+    console.log('🚀 Το bot ξεκίνησε!');
+    api = new PocketOptionAPI();  // Αρχικοποίηση του api όταν το bot ξεκινά
+    await api.connect();
+  }
   res.sendStatus(200);
 });
 
 app.get('/stop', (req, res) => {
   botActive = false;
   console.log('⛔️ Το bot σταμάτησε.');
+  api.close();
+  api = null;  // Αποδεσμεύουμε το api
   res.sendStatus(200);
 });
 
@@ -35,31 +40,11 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
 // Κύριος κώδικας του bot
 (async () => {
   while (true) {
-    if (botActive) {
+    if (botActive && api) {
       console.log('🔄 Εκτέλεση trading bot...');
-      
       try {
-        // Ανάκτηση δεδομένων από WebSocket
-        api.getCandles('EURUSD', 'M1', 100);  // Παράδειγμα ανάκτησης δεδομένων
-
-        // Προσθήκη ακρόασης δεδομένων candles
-        api.on('candles', (candles) => {
-          console.log('📊 Candles:', candles);
-
-          const signal = analyzeStrategy(candles);
-          console.log(`📈 Σήμα στρατηγικής: ${signal}`);
-
-          if (signal === 'CALL' || signal === 'PUT') {
-            api.buyTrade('EURUSD', signal, 1);
-          }
-        });
-
-        // Ανάκτηση υπολοίπου
-        api.getBalances();
-        api.on('balances', (balances) => {
-          console.log('💰 Υπόλοιπα λογαριασμού:', balances);
-        });
-
+        // Παράδειγμα: Ανάκτηση δεδομένων
+        api.sendMessage('GET_CANDLES EURUSD M1');
       } catch (error) {
         console.error('❌ Σφάλμα κατά την εκτέλεση του bot:', error);
       }
@@ -67,6 +52,7 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
     await new Promise(resolve => setTimeout(resolve, 10000));
   }
 })();
+
 
 // **Ανάλυση στρατηγικής EMA + RSI + MACD**
 function analyzeStrategy(candles) {
