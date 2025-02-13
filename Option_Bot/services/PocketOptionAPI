@@ -1,92 +1,48 @@
 const WebSocket = require('ws');
-const EventEmitter = require('events');
 
-class PocketOptionAPI extends EventEmitter {
-  constructor(region = 'UNITED_STATES') {
-    super();
-    this.wssUrl = 'wss://demo-api-eu.po.market/socket.io/?EIO=4&transport=websocket';
-    this.websocket = null;
-    this.region = region;
-    this.isConnected = false;
+class PocketOptionAPI {
+  constructor(url) {
+    this.url = url || 'wss://demo-api-eu.po.market/socket.io/?EIO=4&transport=websocket';
+    this.ws = null;
   }
 
-  startWebsocket() {
+  connect() {
     return new Promise((resolve, reject) => {
-      this.websocket = new WebSocket(this.wssUrl);
+      this.ws = new WebSocket(this.url);
 
-      this.websocket.on('open', () => {
+      this.ws.on('open', () => {
         console.log('✅ WebSocket συνδεδεμένο!');
-        this.isConnected = true;
         resolve();
       });
 
-      this.websocket.on('message', (data) => {
-        this.handleMessage(data);
+      this.ws.on('message', (data) => {
+        console.log(`📩 Λήψη δεδομένων: ${data}`);
       });
 
-      this.websocket.on('error', (error) => {
-        console.error('❌ Σφάλμα WebSocket:', error);
-        reject(error);
-      });
-
-      this.websocket.on('close', () => {
+      this.ws.on('close', () => {
         console.log('❌ Η σύνδεση WebSocket έκλεισε.');
-        this.isConnected = false;
+      });
+
+      this.ws.on('error', (error) => {
+        console.error(`❌ Σφάλμα WebSocket: ${error.message}`);
+        reject(error);
       });
     });
   }
 
-  handleMessage(data) {
-    try {
-      const parsedData = JSON.parse(data.substring(2)); // Αφαίρεση του πρώτου "42" για σωστή αποστολή
-      console.log('📩 Λήψη δεδομένων:', parsedData);
-      if (parsedData.name === 'candles') {
-        this.emit('candles', parsedData.msg);
-      }
-    } catch (error) {
-      console.error('❌ Σφάλμα κατά την επεξεργασία δεδομένων:', error);
+  sendMessage(message) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(message);
+      console.log(`📤 Αποστολή μηνύματος: ${message}`);
+    } else {
+      console.log('⚠️ WebSocket δεν είναι συνδεδεμένο.');
     }
   }
 
-  getCandles(pair, interval = 'M1', count = 100) {
-    const message = {
-      name: 'candles',
-      msg: {
-        pair: pair,
-        interval: interval,
-        count: count
-      }
-    };
-    this.sendMessage(message);
-  }
-
-  buyTrade(pair, direction, amount = 1) {
-    const message = {
-      name: 'buy',
-      msg: {
-        pair: pair,
-        direction: direction, // "CALL" ή "PUT"
-        amount: amount
-      }
-    };
-    this.sendMessage(message);
-  }
-
-  getBalances() {
-    const message = {
-      name: 'getBalances',
-      msg: {}
-    };
-    this.sendMessage(message);
-  }
-
-  sendMessage(message) {
-    if (this.isConnected) {
-      const data = `42${JSON.stringify(message)}`;
-      this.websocket.send(data);
-      console.log('📤 Αποστολή μηνύματος:', message);
-    } else {
-      console.error('❌ Η σύνδεση WebSocket δεν είναι διαθέσιμη.');
+  close() {
+    if (this.ws) {
+      this.ws.close();
+      console.log('🔒 WebSocket έκλεισε.');
     }
   }
 }
