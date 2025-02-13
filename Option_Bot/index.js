@@ -1,10 +1,8 @@
 const express = require('express');
-const PocketOptionAPI = require('./services/PocketOptionAPI');  // Κλάση WebSocket API
-const { EMA, RSI, MACD } = require('technicalindicators');
+const PocketOptionAPI = require('./PocketOptionAPI');
 
 let botActive = false;
 const app = express();
-const api = new PocketOptionAPI('UNITED_STATES');
 
 app.get('/', (req, res) => {
   res.send(`
@@ -18,7 +16,10 @@ app.get('/', (req, res) => {
 app.get('/start', async (req, res) => {
   botActive = true;
   console.log('🚀 Το bot ξεκίνησε!');
+
+  const api = new PocketOptionAPI();
   await api.startWebsocket();
+
   res.sendStatus(200);
 });
 

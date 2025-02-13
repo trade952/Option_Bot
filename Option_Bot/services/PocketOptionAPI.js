@@ -6,6 +6,15 @@ class PocketOptionAPI {
     this.ws = null;
   }
 
+  async startWebsocket() {
+    try {
+      await this.connect();
+      console.log('✅ WebSocket ξεκίνησε και είναι συνδεδεμένο!');
+    } catch (error) {
+      console.error('❌ Σφάλμα κατά τη σύνδεση WebSocket:', error.message);
+    }
+  }
+
   connect() {
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(this.url);
