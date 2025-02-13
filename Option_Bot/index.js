@@ -25,11 +25,22 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
     const chromePath = execSync('which google-chrome-stable').toString().trim();
     console.log(`✅ Βρέθηκε το Google Chrome στο: ${chromePath}`);
 
+    const puppeteer = require('puppeteer');
+
+(async () => {
+  try {
     const browser = await puppeteer.launch({
       headless: true,
-      executablePath: chromePath,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
+
+    console.log('✅ Το Puppeteer ξεκίνησε σωστά με το ενσωματωμένο Chromium!');
+    await browser.close();
+  } catch (error) {
+    console.error('❌ Σφάλμα κατά την εκκίνηση του Puppeteer:', error);
+  }
+})();
+
 
     console.log('✅ Το Puppeteer ξεκίνησε σωστά με το Google Chrome!');
     await browser.close();
