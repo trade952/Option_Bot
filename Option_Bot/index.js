@@ -1,4 +1,5 @@
 const express = require('express');
+const WebSocket = require('ws');  // Βιβλιοθήκη WebSocket
 const { EMA, RSI, MACD } = require('technicalindicators');
 const PocketOptionAPI = require('./services/api');
 
@@ -30,24 +31,36 @@ app.get('/stop', (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
-// Κύριος κώδικας του bot
+// Κύριος κώδικας του WebSocket
 (async () => {
   const api = new PocketOptionAPI('UNITED_STATES');
   await api.startWebsocket();
+
+  api.on('message', (data) => {
+    const parsedData = JSON.parse(data);
+
+    // Έλεγχος για ζωντανά δεδομένα
+    if (parsedData.type === 'favoritePairsUpdate') {
+      console.log(`📡 Αγαπημένα Ζευγάρια: ${JSON.stringify(parsedData.pairs)}`);
+      
+      parsedData.pairs.forEach(pair => {
+        console.log(`🔍 Ζεύγος: ${pair.name}, Ποσοστό Πληρωμής: ${pair.payout}%`);
+        
+        // Εδώ μπορείς να προσθέσεις λογική στρατηγικής για κάθε ζεύγος
+        if (pair.payout > 80) {
+          console.log(`💡 Στρατηγική: Υψηλό payout στο ${pair.name}, πιθανή ευκαιρία.`);
+        }
+      });
+    }
+  });
 
   while (true) {
     if (botActive) {
       console.log("🔄 Εκτέλεση trading bot...");
       try {
-        const pairsWithPayout = getAvailablePairsWithPayout();
-
-        pairsWithPayout.forEach(({ pairName, payout }) => {
-          console.log(`🔍 Ζεύγος: ${pairName}, Ποσοστό Πληρωμής: ${payout}%`);
-          if (parseInt(payout) >= 80) {
-            console.log(`⚡ Συναλλαγή μπορεί να γίνει για το ${pairName} με payout ${payout}%`);
-            // Κάνε trade εδώ αν θέλεις
-          }
-        });
+        // Παράδειγμα λογικής συναλλαγών
+        console.log("📈 Το bot ετοιμάζεται για συναλλαγή...");
+        // Μπορείς να καλέσεις τη στρατηγική σου εδώ
       } catch (error) {
         console.error('❌ Σφάλμα:', error);
       }
@@ -55,22 +68,3 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
     await new Promise(resolve => setTimeout(resolve, 10000));
   }
 })();
-
-// **Συνάρτηση για εξαγωγή αγαπημένων ζευγών και payout**
-function getAvailablePairsWithPayout() {
-  let pairs = [];
-  let assets = document.querySelectorAll(".assets-favorites-item__line");
-
-  assets.forEach(asset => {
-    let pairNameElement = asset.querySelector(".assets-favorites-item__label");
-    let payoutElement = asset.querySelector(".payout__number");
-
-    if (pairNameElement && payoutElement) {
-      let pairName = pairNameElement.innerText.trim();
-      let payout = payoutElement.innerText.trim();
-      pairs.push({ pairName, payout });
-    }
-  });
-
-  return pairs;
-}
