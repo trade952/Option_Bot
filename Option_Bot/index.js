@@ -15,6 +15,7 @@ app.get('/', (req, res) => {
   `);
 });
 
+// Start/Stop Bot
 app.get('/start', (req, res) => {
   botActive = true;
   console.log('🚀 Το bot ξεκίνησε!');
@@ -30,52 +31,44 @@ app.get('/stop', (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
-// **Λειτουργία για εκτέλεση συναλλαγής**
-async function makeTrade(type, pair) {
-  let now = Date.now();
+// Κύριος κώδικας του bot
+(async () => {
+  const api = new PocketOptionAPI('UNITED_STATES');
+  await api.startWebsocket();
 
-  if (activeTrades >= MAX_OPEN_TRADES) {
-      console.log("⚠️ Μέγιστος αριθμός ενεργών συναλλαγών.");
-      return;
+  while (true) {
+    if (botActive) {
+      console.log("🔄 Εκτέλεση trading bot...");
+      try {
+        const availablePairs = await api.getAvailablePairs(); // Ανάκτηση διαθέσιμων ζευγαριών μέσω της API
+        console.log(`🔍 Διαθέσιμα ζευγάρια: ${availablePairs.join(', ')}`);
+
+        for (const pair of availablePairs) {
+          console.log(`🔍 Ανάκτηση δεδομένων για το ${pair}...`);
+          const candles = await fetchCandles(api, pair, 'M1', 100); // Ανάκτηση 100 candles
+
+          if (candles.length > 0) {
+            const signal = analyzeStrategy(candles);
+            console.log(`📊 Σήμα: ${signal}`);
+
+            if (signal === 'CALL' || signal === 'PUT') {
+              await makeTrade(api, pair, signal);
+            } else {
+              console.log(`⚠️ Χωρίς σήμα συναλλαγής για το ${pair}`);
+            }
+          } else {
+            console.log(`⚠️ Δεν βρέθηκαν δεδομένα για το ${pair}`);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Σφάλμα:', error);
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 10000));
   }
+})();
 
-  if (now - lastTradeTime < TRADE_COOLDOWN) {
-      console.log(`⏳ Αναμονή ${(TRADE_COOLDOWN - (now - lastTradeTime)) / 1000} δευτερόλεπτα.`);
-      return;
-  }
-
-  console.log(`📈 Εκτέλεση συναλλαγής: ${type} στο ${pair}`);
-
-  let tradingPanel = document.querySelector(`.trading-panel[data-asset-name="${pair}"]`) || document.querySelector(`.trading-panel`);
-  if (!tradingPanel) {
-      console.log(`❌ Δεν βρέθηκε το πάνελ για το ζευγάρι ${pair}`);
-      return;
-  }
-
-  let callButton = tradingPanel.querySelector(".btn-call");
-  let putButton = tradingPanel.querySelector(".btn-put");
-
-  if (type === "CALL" && callButton) {
-      callButton.click();
-      console.log(`✅ CALL εκτελέστηκε στο ${pair}`);
-      lastTradeTime = now;
-      activeTrades++;
-  } else if (type === "PUT" && putButton) {
-      putButton.click();
-      console.log(`✅ PUT εκτελέστηκε στο ${pair}`);
-      lastTradeTime = now;
-      activeTrades++;
-  } else {
-      console.log(`❌ Δεν βρέθηκε το κουμπί για τη συναλλαγή στο ${pair}`);
-  }
-
-  setTimeout(() => {
-      activeTrades--;
-      console.log(`🔄 Μείωση ενεργών συναλλαγών: ${activeTrades}`);
-  }, 60000);
-}
-
-// **Ανάλυση Στρατηγικής**
+// **Ανάλυση στρατηγικής**
 function analyzeStrategy(candles) {
   const closePrices = candles.map(c => c.close);
 
@@ -107,19 +100,17 @@ function analyzeStrategy(candles) {
   }
 }
 
-// **Λειτουργία για Εκτέλεση Συναλλαγής**
-async function makeTrade(api, assetName, type) {
+// **Εκτέλεση συναλλαγής μέσω API**
+async function makeTrade(apiInstance, pair, type) {
   try {
-    console.log(`📈 Εκτέλεση συναλλαγής: ${type} στο ${assetName}`);
-    const tradeResponse = await api.buyv3.execute(assetName, type, 1); // Ποσό: 1
+    console.log(`📈 Εκτέλεση συναλλαγής: ${type} στο ${pair}`);
+    const tradeResponse = await apiInstance.buyv3.execute(pair, type, 1); // Ποσό: 1
     if (tradeResponse.success) {
-      console.log(`✅ Συναλλαγή ${type} στο ${assetName} ολοκληρώθηκε επιτυχώς.`);
+      console.log(`✅ Συναλλαγή ${type} στο ${pair} ολοκληρώθηκε επιτυχώς.`);
     } else {
-      console.log(`❌ Αποτυχία συναλλαγής στο ${assetName}:`, tradeResponse.message);
+      console.log(`❌ Αποτυχία συναλλαγής στο ${pair}: ${tradeResponse.message}`);
     }
   } catch (error) {
-    console.error(`❌ Σφάλμα κατά την εκτέλεση συναλλαγής για το ${assetName}:`, error);
+    console.error(`❌ Σφάλμα κατά την εκτέλεση συναλλαγής: ${error.message}`);
   }
 }
-
-
