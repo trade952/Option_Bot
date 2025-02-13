@@ -1,5 +1,5 @@
 const express = require('express');
-const PocketOptionAPI = require('./PocketOptionAPI');  // Κλάση WebSocket API
+const PocketOptionAPI = require('./services/PocketOptionAPI');  // Κλάση WebSocket API
 const { EMA, RSI, MACD } = require('technicalindicators');
 
 let botActive = false;
