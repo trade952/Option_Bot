@@ -19,38 +19,28 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
-// Έλεγχος αν το Google Chrome υπάρχει στη διαδρομή
+// Έλεγχος αν το Google Chrome υπάρχει στη διαδρομή και εκκίνηση του Puppeteer
 (async () => {
   try {
     const chromePath = execSync('which google-chrome-stable').toString().trim();
     console.log(`✅ Βρέθηκε το Google Chrome στο: ${chromePath}`);
 
-    const puppeteer = require('puppeteer');
-
-(async () => {
-  try {
     const browser = await puppeteer.launch({
       headless: true,
-      executablePath: '/usr/bin/google-chrome-stable',
+      executablePath: chromePath,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
     console.log('✅ Το Puppeteer ξεκίνησε σωστά με το Google Chrome!');
-    const page = await browser.newPage();
-    await page.goto('https://example.com');
-    console.log('📄 Η σελίδα φορτώθηκε επιτυχώς!');
     
-    await browser.close();
-  } catch (error) {
-    console.error('❌ Σφάλμα κατά την εκκίνηση του Puppeteer:', error);
-  }
-})();
-
-
-    console.log('✅ Το Puppeteer ξεκίνησε σωστά με το Google Chrome!');
+    const page = await browser.newPage();
+    await page.goto('https://pocketoption.com');
+    console.log('📄 Η σελίδα Example φορτώθηκε επιτυχώς!');
+    
     await browser.close();
   } catch (error) {
     console.error('❌ Σφάλμα κατά την εκκίνηση του Puppeteer:', error);
     process.exit(1); // Τερματίζουμε την εφαρμογή αν δεν βρεθεί το Google Chrome
   }
 })();
+
