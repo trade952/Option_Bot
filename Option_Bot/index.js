@@ -18,21 +18,20 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
 (async () => {
-  const chromePath = '/usr/bin/google-chrome';  // Χρησιμοποιούμε το σταθερό path που επαληθεύσαμε στο Dockerfile
-  console.log(`✅ Χρήση του Google Chrome από: ${chromePath}`);
+  console.log('✅ Ξεκινάμε το Puppeteer με το προεγκατεστημένο Chromium');
 
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: chromePath,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
   const page = await browser.newPage();
-  console.log('✅ Το Puppeteer ξεκίνησε σωστά με το Google Chrome!');
+  console.log('✅ Το Puppeteer ξεκίνησε σωστά με το Chromium!');
 
   await page.goto('https://pocketoption.com');
   console.log('📄 Η σελίδα Pocket Option φορτώθηκε επιτυχώς!');
 
   await browser.close();
 })();
+
 
