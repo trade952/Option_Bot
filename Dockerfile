@@ -46,7 +46,7 @@ COPY Option_Bot/. ./
 EXPOSE 10000
 
 # Ορίζουμε μεταβλητές περιβάλλοντος για το Puppeteer
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
 
 # Εκκίνηση της εφαρμογής
