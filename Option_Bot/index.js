@@ -20,14 +20,16 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
 
 (async () => {
   const { execSync } = require('child_process');
+let chromePath;
 
-  try {
-    const chromePath = execSync('which google-chrome').toString().trim();
-    console.log(`✅ Βρέθηκε το Google Chrome στο: ${chromePath}`);
-  } catch (error) {
-    console.error('❌ Το Google Chrome δεν βρέθηκε! Βεβαιωθείτε ότι είναι σωστά εγκατεστημένο.');
-    process.exit(1);
-  }
+try {
+  chromePath = execSync('which google-chrome').toString().trim();
+  console.log(`✅ Βρέθηκε το Google Chrome στο: ${chromePath}`);
+} catch (error) {
+  console.error('❌ Το Google Chrome δεν βρέθηκε! Βεβαιωθείτε ότι είναι σωστά εγκατεστημένο.');
+  process.exit(1);
+}
+
 
   const browser = await puppeteer.launch({
     headless: true,
