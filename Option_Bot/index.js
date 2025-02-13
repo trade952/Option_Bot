@@ -18,16 +18,8 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
 (async () => {
-  const { execSync } = require('child_process');
-  let chromePath;
-
-  try {
-    chromePath = execSync('which google-chrome').toString().trim();
-    console.log(`✅ Βρέθηκε το Google Chrome στο: ${chromePath}`);
-  } catch (error) {
-    console.error('❌ Το Google Chrome δεν βρέθηκε! Βεβαιωθείτε ότι είναι σωστά εγκατεστημένο.');
-    process.exit(1);
-  }
+  const chromePath = '/usr/bin/google-chrome';  // Χρησιμοποιούμε το σταθερό path που επαληθεύσαμε στο Dockerfile
+  console.log(`✅ Χρήση του Google Chrome από: ${chromePath}`);
 
   const browser = await puppeteer.launch({
     headless: true,
@@ -43,3 +35,4 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
 
   await browser.close();
 })();
+
