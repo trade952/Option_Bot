@@ -1,7 +1,7 @@
 # Χρησιμοποιούμε το Node 18 ως βάση
 FROM node:18
 
-# Εγκατάσταση απαραίτητων βιβλιοθηκών για το Chromium που συνοδεύει το Puppeteer
+# Εγκατάσταση εξαρτήσεων για το Google Chrome
 RUN apt-get update && apt-get install -y \
   wget \
   gnupg \
@@ -27,21 +27,23 @@ RUN apt-get update && apt-get install -y \
   xdg-utils \
   && rm -rf /var/lib/apt/lists/*
 
+# Εγκατάσταση Google Chrome
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
+  && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
+  && apt-get update && apt-get install -y google-chrome-stable
+
 # Ορίζουμε το working directory
 WORKDIR /app
 
-# Αντιγραφή του package.json και εγκατάσταση εξαρτήσεων
+# Αντιγραφή και εγκατάσταση εξαρτήσεων
 COPY Option_Bot/package*.json ./
-RUN npm install
+RUN npm install puppeteer-core
 
 # Αντιγραφή όλων των αρχείων από τον φάκελο Option_Bot
 COPY Option_Bot/. ./
 
 # Εκθέτουμε το port 10000
 EXPOSE 10000
-
-# Ορίζουμε μεταβλητές περιβάλλοντος για το Puppeteer
-ENV PUPPETEER_SKIP_DOWNLOAD=false  # Κατεβάζουμε το προεπιλεγμένο Chromium
 
 # Εκκίνηση της εφαρμογής
 CMD ["node", "index.js"]
