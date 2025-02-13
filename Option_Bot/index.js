@@ -30,37 +30,50 @@ app.get('/stop', (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη θύρα ${PORT}`));
 
-(async () => {
-  const api = new PocketOptionAPI('UNITED_STATES');
-  await api.startWebsocket();
+// **Λειτουργία για εκτέλεση συναλλαγής**
+async function makeTrade(type, pair) {
+  let now = Date.now();
 
-  while (true) {
-    if (botActive) {
-      console.log("🔄 Εκτέλεση trading bot...");
-      try {
-        const favoritePairs = ['EURUSD', 'GBPUSD', 'USDJPY'];
-        for (const pair of favoritePairs) {
-          console.log(`🔍 Ανάκτηση δεδομένων για το ${pair}...`);
-          const candles = await api.getCandles(pair, 'M1', 100);
-
-          if (candles.length > 0) {
-            const signal = analyzeStrategy(candles);
-            console.log(`📊 Σήμα: ${signal}`);
-            
-            if (signal === 'CALL' || signal === 'PUT') {
-              await makeTrade(api, pair, signal);
-            } else {
-              console.log(`⚠️ Χωρίς σήμα συναλλαγής για το ${pair}`);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('❌ Σφάλμα:', error);
-      }
-    }
-    await new Promise(resolve => setTimeout(resolve, 10000));
+  if (activeTrades >= MAX_OPEN_TRADES) {
+      console.log("⚠️ Μέγιστος αριθμός ενεργών συναλλαγών.");
+      return;
   }
-})();
+
+  if (now - lastTradeTime < TRADE_COOLDOWN) {
+      console.log(`⏳ Αναμονή ${(TRADE_COOLDOWN - (now - lastTradeTime)) / 1000} δευτερόλεπτα.`);
+      return;
+  }
+
+  console.log(`📈 Εκτέλεση συναλλαγής: ${type} στο ${pair}`);
+
+  let tradingPanel = document.querySelector(`.trading-panel[data-asset-name="${pair}"]`) || document.querySelector(`.trading-panel`);
+  if (!tradingPanel) {
+      console.log(`❌ Δεν βρέθηκε το πάνελ για το ζευγάρι ${pair}`);
+      return;
+  }
+
+  let callButton = tradingPanel.querySelector(".btn-call");
+  let putButton = tradingPanel.querySelector(".btn-put");
+
+  if (type === "CALL" && callButton) {
+      callButton.click();
+      console.log(`✅ CALL εκτελέστηκε στο ${pair}`);
+      lastTradeTime = now;
+      activeTrades++;
+  } else if (type === "PUT" && putButton) {
+      putButton.click();
+      console.log(`✅ PUT εκτελέστηκε στο ${pair}`);
+      lastTradeTime = now;
+      activeTrades++;
+  } else {
+      console.log(`❌ Δεν βρέθηκε το κουμπί για τη συναλλαγή στο ${pair}`);
+  }
+
+  setTimeout(() => {
+      activeTrades--;
+      console.log(`🔄 Μείωση ενεργών συναλλαγών: ${activeTrades}`);
+  }, 60000);
+}
 
 // **Ανάλυση Στρατηγικής**
 function analyzeStrategy(candles) {
