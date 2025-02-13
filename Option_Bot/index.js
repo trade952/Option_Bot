@@ -2,11 +2,10 @@ const express = require('express');
 const PocketOptionAPI = require('./services/PocketOptionAPI');
 
 let botActive = false;
-let api = null;  // Δημιουργούμε το api εδώ
+let api = null;
 
 const app = express();
 
-// Web Interface
 app.get('/', (req, res) => {
   res.send(`
     <h1>Trading Bot Web Interface</h1>
@@ -20,17 +19,25 @@ app.get('/start', async (req, res) => {
   if (!botActive) {
     botActive = true;
     console.log('🚀 Το bot ξεκίνησε!');
-    api = new PocketOptionAPI();  // Αρχικοποίηση του api όταν το bot ξεκινά
-    await api.connect();
+    api = new PocketOptionAPI();
+
+    try {
+      await api.connect();  // Επανασύνδεση αν έχει αποσυνδεθεί
+      console.log('✅ WebSocket ξεκίνησε και είναι συνδεδεμένο!');
+    } catch (error) {
+      console.error('❌ Σφάλμα κατά τη σύνδεση WebSocket:', error);
+    }
   }
   res.sendStatus(200);
 });
 
 app.get('/stop', (req, res) => {
   botActive = false;
+  if (api) {
+    api.close();
+    api = null;
+  }
   console.log('⛔️ Το bot σταμάτησε.');
-  api.close();
-  api = null;  // Αποδεσμεύουμε το api
   res.sendStatus(200);
 });
 
@@ -43,8 +50,12 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
     if (botActive && api) {
       console.log('🔄 Εκτέλεση trading bot...');
       try {
-        // Παράδειγμα: Ανάκτηση δεδομένων
-        api.sendMessage('GET_CANDLES EURUSD M1');
+        if (api.isConnected()) {
+          api.sendMessage('GET_CANDLES EURUSD M1');
+        } else {
+          console.log('⚠️ WebSocket δεν είναι συνδεδεμένο. Προσπάθεια επανασύνδεσης...');
+          await api.connect();
+        }
       } catch (error) {
         console.error('❌ Σφάλμα κατά την εκτέλεση του bot:', error);
       }
@@ -52,7 +63,6 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
     await new Promise(resolve => setTimeout(resolve, 10000));
   }
 })();
-
 
 // **Ανάλυση στρατηγικής EMA + RSI + MACD**
 function analyzeStrategy(candles) {
