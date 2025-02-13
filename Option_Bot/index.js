@@ -21,8 +21,8 @@ app.listen(PORT, () => console.log(`📡 Το Web Interface τρέχει στη 
 
 (async () => {
   const browser = await puppeteer.launch({
-    headless: true, 
-    executablePath: '/usr/bin/google-chrome', 
+    headless: true,
+    executablePath: puppeteer.executablePath(), // Αυτό ανιχνεύει αυτόματα το μονοπάτι
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
